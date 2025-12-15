@@ -1,0 +1,93 @@
+# UCBAgent.py
+# Simple UCB1 (Upper Confidence Bound) agent for multi-armed bandits.
+# "Student-like" style: clear names, small steps, inline comments, and optional debug prints.
+
+import math
+from typing import List, Optional, Tuple
+
+class UCBAgent:
+    def __init__(self, c: float = 2.0, debug: bool = False):
+        """
+        c: exploration strength (bigger -> explores more)
+        debug: if True, prints internal calculations
+        """
+        self.name: str = "Uma the UCB Agent"
+        self.c: float = c
+        self.debug: bool = debug
+
+        # Per-arm stats are stored as dicts: {"mean": float, "count": int}
+        self.arms: Optional[List[dict]] = None
+
+        # Total number of times we've recommended an arm
+        self.total_pulls: int = 0
+
+    def recommendArm(self, bandit, history: List[Tuple[int, float]]) -> int:
+        """
+        Choose an arm using UCB1.
+        bandit: object with bandit.getNumArms()
+        history: list of (arm_index, reward) since last call
+        """
+        num_arms = bandit.getNumArms()
+
+        # Lazy init of arms
+        if self.arms is None:
+            self.arms = [{"mean": 0.0, "count": 0} for _ in range(num_arms)]
+            if self.debug:
+                print(f"[init] created {num_arms} arms")
+
+        # Incorporate recent history into running means
+        for arm_idx, reward in history:
+            self.update(arm_idx, reward)
+
+        # Increment the global round counter (t in UCB papers)
+        self.total_pulls += 1
+        t = self.total_pulls
+
+        # Exploration phase: pull each arm at least once
+        for i, stats in enumerate(self.arms):
+            if stats["count"] == 0:
+                if self.debug:
+                    print(f"[explore] picking untried arm {i}")
+                return i
+
+        # Compute UCB score for each arm and pick the max
+        best_arm = 0
+        best_score = float("-inf")
+
+        for i, stats in enumerate(self.arms):
+            # mean reward so far
+            mean = stats["mean"]
+            n_i = stats["count"]
+
+            # UCB = mean + c * sqrt( ln(t) / n_i )
+            # t = total pulls so far (≥ number of tried arms)
+            bonus = self.c * math.sqrt(math.log(t) / n_i)
+            ucb_score = mean + bonus
+
+            if self.debug:
+                print(f"[ucb] arm={i} mean={mean:.4f} count={n_i} bonus={bonus:.4f} score={ucb_score:.4f}")
+
+            if ucb_score > best_score:
+                best_score = ucb_score
+                best_arm = i
+
+        if self.debug:
+            print(f"[choose] t={t} -> arm {best_arm} (score={best_score:.4f})")
+
+        return best_arm
+
+    def update(self, arm_idx: int, reward: float) -> None:
+        """
+        Update running mean for the given arm using incremental average.
+        """
+        stats = self.arms[arm_idx]
+        stats["count"] += 1
+
+        n = stats["count"]
+        old_mean = stats["mean"]
+
+        # New mean = old_mean + (reward - old_mean)/n
+        stats["mean"] = old_mean + (reward - old_mean) / n
+
+        if self.debug:
+            print(f"[update] arm={arm_idx} reward={reward:.4f} n={n} mean: {old_mean:.4f} -> {stats['mean']:.4f}")
