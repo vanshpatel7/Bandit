@@ -195,7 +195,7 @@ def main():
         regret_results[agent_name] = regrets
 
     # Plot cumulative rewards
-    rewards_png = f"bandit_rewards_comparison_{input_name}.png"
+    rewards_png = os.path.join("plots", f"bandit_rewards_comparison_{input_name}.png")
     plot_curves(
         curves=rewards_results,
         num_plays=args.num_plays,
@@ -206,7 +206,7 @@ def main():
     )
 
     # Plot pseudo-regret
-    regret_png = f"bandit_regret_comparison_{input_name}.png"
+    regret_png = os.path.join("plots", f"bandit_regret_comparison_{input_name}.png")
     plot_curves(
         curves=regret_results,
         num_plays=args.num_plays,
